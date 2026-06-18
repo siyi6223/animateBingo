@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>動畫世代賓果 EXTRA</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="page-shell">
+      <section class="hero">
+        <h1 id="page-title">動畫世代賓果 EXTRA</h1>
+        <p id="page-subtitle" class="hero-copy">點擊選擇你看過的動畫</p>
+      </section>
+
+      <section class="control-panel">
+        <div class="control-group">
+          <label for="year-range" id="year-range-label">年份範圍</label>
+          <select id="year-range"></select>
+        </div>
+
+        <div class="control-group">
+          <span id="language-label">語言</span>
+          <div class="segmented-control">
+            <button type="button" class="lang-button" data-lang="zh">中文</button>
+            <button type="button" class="lang-button" data-lang="ja">日本語</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="board-panel">
+        <div class="board-header">
+          <h2 id="board-title">動畫世代賓果 EXTRA</h2>
+          <p id="watch-count" class="watch-count">我看過 0/0 部動畫</p>
+        </div>
+        <div class="board-scroll">
+          <div id="board" class="board" aria-live="polite"></div>
+        </div>
+      </section>
+
+      <section class="action-bar">
+        <button type="button" id="select-all-button" class="action-button primary">全選</button>
+        <button type="button" id="clear-button" class="action-button">清除</button>
+      </section>
+
+      <section class="legend-panel">
+        <div class="legend-item">
+          <span class="legend-swatch swatch-selected"></span>
+          <span id="legend-watched">看過</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-swatch swatch-default"></span>
+          <span id="legend-not-watched">沒看過</span>
+        </div>
+      </section>
+
+      <footer class="site-footer">
+        <p id="footer-copy">
+          歷年關注度高的作品示意。
+        </p>
+      </footer>
+    </main>
+
+    <script src="./script.js"></script>
+  </body>
+</html>
