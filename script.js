@@ -506,7 +506,11 @@ function renderMeta() {
 }
 
 function renderBoard() {
-  elements.board.innerHTML = "";
+  populateBoard(elements.board, { interactive: true });
+}
+
+function populateBoard(target, { interactive }) {
+  target.innerHTML = "";
 
   visibleGroups().forEach((group) => {
     const row = document.createElement("div");
@@ -520,37 +524,44 @@ function renderBoard() {
     animeGrid.className = "anime-grid";
 
     group.items.forEach((anime) => {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "anime-cell";
-      button.title = anime[state.language];
-      button.setAttribute("aria-pressed", String(state.selected.has(anime.id)));
-
-      if (state.selected.has(anime.id)) {
-        button.classList.add("is-selected");
-      }
-
-      button.addEventListener("click", () => {
-        if (state.selected.has(anime.id)) {
-          state.selected.delete(anime.id);
-        } else {
-          state.selected.add(anime.id);
-        }
-
-        persist();
-        render();
-      });
-
-      const label = document.createElement("span");
-      label.textContent = anime[state.language];
-      button.appendChild(label);
-      animeGrid.appendChild(button);
+      animeGrid.appendChild(createAnimeCell(anime, interactive));
     });
 
     row.appendChild(yearCell);
     row.appendChild(animeGrid);
-    elements.board.appendChild(row);
+    target.appendChild(row);
   });
+}
+
+function createAnimeCell(anime, interactive) {
+  const isSelected = state.selected.has(anime.id);
+  const cell = document.createElement(interactive ? "button" : "div");
+  cell.className = "anime-cell";
+  cell.title = anime[state.language];
+
+  if (isSelected) {
+    cell.classList.add("is-selected");
+  }
+
+  if (interactive) {
+    cell.type = "button";
+    cell.setAttribute("aria-pressed", String(isSelected));
+    cell.addEventListener("click", () => {
+      if (state.selected.has(anime.id)) {
+        state.selected.delete(anime.id);
+      } else {
+        state.selected.add(anime.id);
+      }
+
+      persist();
+      render();
+    });
+  }
+
+  const label = document.createElement("span");
+  label.textContent = anime[state.language];
+  cell.appendChild(label);
+  return cell;
 }
 
 function visibleGroups() {
@@ -629,26 +640,220 @@ function setText(element, value) {
   }
 }
 
-async function exportBoardAsPng() {
-  if (typeof html2canvas !== "function") {
-    return;
-  }
-
-  const boardPanel = document.querySelector(".board-panel");
-  if (!boardPanel) {
-    return;
-  }
-
-  const canvas = await html2canvas(boardPanel, {
-    backgroundColor: "#f8f4ec",
-    scale: 2,
-    useCORS: true,
-  });
-
+function exportBoardAsPng() {
+  const canvas = renderBoardExportCanvas();
   const link = document.createElement("a");
   link.download = `${copy[state.language].exportFileName}-${state.range}.png`;
   link.href = canvas.toDataURL("image/png");
   link.click();
+}
+
+function renderBoardExportCanvas() {
+  const t = copy[state.language];
+  const columns = 12;
+  const cellSize = 96;
+  const yearWidth = 120;
+  const panelPadding = 18;
+  const headerInset = 8;
+  const headerHeight = 56;
+  const boardWidth = yearWidth + columns * cellSize;
+  const boardHeight = visibleGroups().length * cellSize;
+  const panelWidth = boardWidth + panelPadding * 2;
+  const panelHeight = panelPadding + headerHeight + boardHeight + panelPadding;
+  const scale = 2;
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+
+  canvas.width = panelWidth * scale;
+  canvas.height = panelHeight * scale;
+  canvas.style.width = `${panelWidth}px`;
+  canvas.style.height = `${panelHeight}px`;
+  ctx.scale(scale, scale);
+
+  ctx.fillStyle = "#f8f4ec";
+  ctx.fillRect(0, 0, panelWidth, panelHeight);
+  drawRoundedRect(ctx, 0.5, 0.5, panelWidth - 1, panelHeight - 1, 28, "#ffffff", "#ddd8cf");
+
+  const headerY = panelPadding + 4;
+  const headerBottom = panelPadding + headerHeight - 14;
+  const watchedCount = visibleAnime().filter((anime) => state.selected.has(anime.id)).length;
+  const watchedText = interpolate(t.watchedCount, {
+    count: watchedCount,
+    total: visibleAnime().length,
+  });
+
+  ctx.fillStyle = "#1f1a14";
+  ctx.font = exportFont(20, 700);
+  ctx.textBaseline = "top";
+  ctx.fillText(t.boardTitle, panelPadding + headerInset, headerY);
+
+  drawExportHeaderActions(ctx, watchedText, panelWidth - panelPadding - headerInset, headerY - 2);
+
+  ctx.strokeStyle = "rgba(31, 26, 20, 0.1)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(panelPadding, headerBottom + 14);
+  ctx.lineTo(panelWidth - panelPadding, headerBottom + 14);
+  ctx.stroke();
+
+  drawExportBoard(ctx, panelPadding, panelPadding + headerHeight, {
+    cellSize,
+    columns,
+    yearWidth,
+  });
+
+  return canvas;
+}
+
+function drawExportHeaderActions(ctx, watchedText, right, y) {
+  ctx.font = exportFont(16, 400);
+  ctx.textBaseline = "middle";
+
+  const clearWidth = Math.ceil(ctx.measureText(copy[state.language].clear).width) + 28;
+  const selectWidth = Math.ceil(ctx.measureText(copy[state.language].selectAll).width) + 28;
+  const buttonHeight = 38;
+  const gap = 8;
+  const clearX = right - clearWidth;
+  const selectX = clearX - gap - selectWidth;
+  const textWidth = Math.ceil(ctx.measureText(watchedText).width);
+  const textX = selectX - 14 - textWidth;
+  const centerY = y + buttonHeight / 2;
+
+  ctx.fillStyle = "#1f1a14";
+  ctx.fillText(watchedText, textX, centerY);
+  drawRoundedRect(ctx, selectX, y, selectWidth, buttonHeight, 19, "#3e81c6", "#3e81c6");
+  drawRoundedRect(ctx, clearX, y, clearWidth, buttonHeight, 19, "#ffffff", "rgba(31, 26, 20, 0.16)");
+
+  ctx.font = exportFont(15, 600);
+  ctx.fillStyle = "#ffffff";
+  fillCenteredText(ctx, copy[state.language].selectAll, selectX, y, selectWidth, buttonHeight);
+  ctx.fillStyle = "#1f1a14";
+  fillCenteredText(ctx, copy[state.language].clear, clearX, y, clearWidth, buttonHeight);
+}
+
+function drawExportBoard(ctx, x, y, { cellSize, columns, yearWidth }) {
+  const borderColor = "rgba(31, 26, 20, 0.12)";
+  const groupsToDraw = visibleGroups();
+  const boardWidth = yearWidth + columns * cellSize;
+  const boardHeight = groupsToDraw.length * cellSize;
+
+  ctx.fillStyle = "#fffdf8";
+  ctx.fillRect(x, y, boardWidth, boardHeight);
+
+  groupsToDraw.forEach((group, rowIndex) => {
+    const rowY = y + rowIndex * cellSize;
+
+    ctx.fillStyle = "#8c5d1d";
+    ctx.fillRect(x, rowY, yearWidth, cellSize);
+    ctx.fillStyle = "#ffffff";
+    ctx.font = exportFont(16, 700);
+    fillCenteredText(ctx, group.label, x, rowY, yearWidth, cellSize);
+
+    group.items.forEach((anime, columnIndex) => {
+      const cellX = x + yearWidth + columnIndex * cellSize;
+      const isSelected = state.selected.has(anime.id);
+
+      ctx.fillStyle = isSelected ? "#d7852f" : "#fffdf8";
+      ctx.fillRect(cellX, rowY, cellSize, cellSize);
+      ctx.fillStyle = isSelected ? "#ffffff" : "#1f1a14";
+      ctx.font = exportFont(13, 400);
+      fillWrappedText(ctx, anime[state.language], cellX + 10, rowY + 10, cellSize - 20, cellSize - 20, 3, 15.6);
+    });
+  });
+
+  ctx.strokeStyle = borderColor;
+  ctx.lineWidth = 1;
+  strokeRectCrisp(ctx, x, y, boardWidth, boardHeight);
+
+  for (let row = 1; row < groupsToDraw.length; row += 1) {
+    const lineY = y + row * cellSize;
+    drawLine(ctx, x, lineY, x + boardWidth, lineY);
+  }
+
+  for (let column = 0; column <= columns; column += 1) {
+    const lineX = x + yearWidth + column * cellSize;
+    drawLine(ctx, lineX, y, lineX, y + boardHeight);
+  }
+}
+
+function fillWrappedText(ctx, text, x, y, maxWidth, maxHeight, maxLines, lineHeight) {
+  const segments = Array.from(text);
+  const lines = [];
+  let line = "";
+
+  segments.forEach((segment) => {
+    const nextLine = `${line}${segment}`;
+    if (line && ctx.measureText(nextLine).width > maxWidth) {
+      lines.push(line);
+      line = segment;
+    } else {
+      line = nextLine;
+    }
+  });
+
+  if (line) {
+    lines.push(line);
+  }
+
+  const visibleLines = lines.slice(0, maxLines);
+  if (lines.length > maxLines && visibleLines.length) {
+    visibleLines[visibleLines.length - 1] = fitTextWithEllipsis(ctx, visibleLines[visibleLines.length - 1], maxWidth);
+  }
+
+  const totalTextHeight = Math.min(maxHeight, visibleLines.length * lineHeight);
+  let textY = y + (maxHeight - totalTextHeight) / 2;
+  ctx.textBaseline = "top";
+  visibleLines.forEach((visibleLine) => {
+    ctx.fillText(visibleLine, x + (maxWidth - ctx.measureText(visibleLine).width) / 2, textY);
+    textY += lineHeight;
+  });
+}
+
+function fitTextWithEllipsis(ctx, text, maxWidth) {
+  const ellipsis = "...";
+  let result = text;
+  while (result && ctx.measureText(`${result}${ellipsis}`).width > maxWidth) {
+    result = result.slice(0, -1);
+  }
+  return `${result}${ellipsis}`;
+}
+
+function fillCenteredText(ctx, text, x, y, width, height) {
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, x + (width - ctx.measureText(text).width) / 2, y + height / 2);
+}
+
+function drawRoundedRect(ctx, x, y, width, height, radius, fillStyle, strokeStyle) {
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.lineTo(x + width - radius, y);
+  ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+  ctx.lineTo(x + width, y + height - radius);
+  ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+  ctx.lineTo(x + radius, y + height);
+  ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+  ctx.lineTo(x, y + radius);
+  ctx.quadraticCurveTo(x, y, x + radius, y);
+  ctx.closePath();
+  ctx.fillStyle = fillStyle;
+  ctx.fill();
+  ctx.strokeStyle = strokeStyle;
+  ctx.stroke();
+}
+
+function strokeRectCrisp(ctx, x, y, width, height) {
+  ctx.strokeRect(x + 0.5, y + 0.5, width, height);
+}
+
+function drawLine(ctx, startX, startY, endX, endY) {
+  ctx.beginPath();
+  ctx.moveTo(startX + 0.5, startY + 0.5);
+  ctx.lineTo(endX + 0.5, endY + 0.5);
+  ctx.stroke();
+}
+
+function exportFont(size, weight) {
+  return `${weight} ${size}px "Segoe UI", "Noto Sans TC", "Hiragino Sans", sans-serif`;
 }
 
 function loadState(key, fallback) {
