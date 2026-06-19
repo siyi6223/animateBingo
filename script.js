@@ -402,8 +402,6 @@ const groups = [
   },
 ];
 
-const allAnime = groups.flatMap((group) => group.items);
-
 const state = {
   language: loadState(STORAGE_KEYS.language, "zh"),
   selected: new Set(loadState(STORAGE_KEYS.selected, [])),
