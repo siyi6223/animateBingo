@@ -1,6 +1,7 @@
 const STORAGE_KEYS = {
   language: "anime-sedai-static-language",
   selected: "anime-sedai-static-selected",
+  range: "anime-sedai-static-range",
 };
 
 const copy = {
@@ -8,55 +9,70 @@ const copy = {
     pageTitle: "思異的動畫世代Bingo",
     subtitle: "可以左右滑動點選，並支援三種語言切換。",
     heroNote: "共 228 部",
+    rangeFilter: "表格長度",
+    rangeAll: "全部",
+    range10: "近10年",
+    range5: "近5年",
     language: "語言",
     chinese: "中文",
     japanese: "日本語",
     english: "English",
-    boardTitle: "動畫清單",
-    boardDescription: "固定 19 行分組顯示",
+    boardTitle: "思異的動畫世代賓果",
     watchedCount: "已看 {{count}}/{{total}} 部",
     selectAll: "全選",
     clear: "清除",
+    export: "匯出 PNG",
     watched: "已看",
     notWatched: "未看",
     footerLead: "如果不小心通宵追番，這裡可以幫你看幾點能看到日出",
     footer: "靜態頁面可直接部署到 GitHub Pages，觀看紀錄會保存在本機瀏覽器。",
+    exportFileName: "動畫世代bingo",
   },
   ja: {
     pageTitle: "思異のアニメ世代Bingo",
     subtitle: "左右にスライドして選択でき、3 言語切替にも対応しています。",
     heroNote: "合計 228 作品",
+    rangeFilter: "表示範囲",
+    rangeAll: "すべて",
+    range10: "直近10年",
+    range5: "直近5年",
     language: "言語",
     chinese: "中文",
     japanese: "日本語",
     english: "English",
-    boardTitle: "アニメ一覧",
-    boardDescription: "全 19 行の固定レイアウト表示",
+    boardTitle: "思異のアニメ世代Bingo",
     watchedCount: "視聴済み {{count}}/{{total}}",
     selectAll: "すべて選択",
     clear: "クリア",
+    export: "PNGを書き出す",
     watched: "視聴済み",
     notWatched: "未視聴",
     footerLead: "うっかり徹夜でアニメを見ても、ここで日の出の時間を確認できます。",
     footer: "静的サイトなので GitHub Pages にそのまま配置でき、視聴記録はブラウザに保存されます。",
+    exportFileName: "anime-generation-bingo",
   },
   en: {
     pageTitle: "Siyi's Anime Generation Bingo",
     subtitle: "You can swipe horizontally to select titles, with support for switching between three languages.",
     heroNote: "228 titles total",
+    rangeFilter: "Table Range",
+    rangeAll: "All",
+    range10: "Last 10 Years",
+    range5: "Last 5 Years",
     language: "Language",
     chinese: "中文",
     japanese: "日本語",
     english: "English",
-    boardTitle: "Anime List",
-    boardDescription: "Displayed in a fixed 19-row layout",
+    boardTitle: "Siyi's Anime Generation Bingo",
     watchedCount: "Watched {{count}}/{{total}}",
     selectAll: "Select all",
     clear: "Clear",
+    export: "Export PNG",
     watched: "Watched",
     notWatched: "Not watched",
     footerLead: "If you accidentally stay up all night watching anime, this can tell you when sunrise is.",
     footer: "This static page can be deployed directly to GitHub Pages, and watch data is saved in the browser.",
+    exportFileName: "anime-generation-bingo",
   },
 };
 
@@ -391,6 +407,7 @@ const allAnime = groups.flatMap((group) => group.items);
 const state = {
   language: loadState(STORAGE_KEYS.language, "zh"),
   selected: new Set(loadState(STORAGE_KEYS.selected, [])),
+  range: loadState(STORAGE_KEYS.range, "all"),
 };
 
 const elements = {
@@ -398,13 +415,17 @@ const elements = {
   heroNote: document.getElementById("hero-note"),
   pageTitle: document.getElementById("page-title"),
   pageSubtitle: document.getElementById("page-subtitle"),
+  rangeFilterLabel: document.getElementById("range-filter-label"),
+  rangeFilter: document.getElementById("range-filter"),
   languageLabel: document.getElementById("language-label"),
   boardTitle: document.getElementById("board-title"),
-  boardDescription: document.getElementById("board-description"),
   board: document.getElementById("board"),
   watchCount: document.getElementById("watch-count"),
+  headerSelectAllButton: document.getElementById("header-select-all-button"),
+  headerClearButton: document.getElementById("header-clear-button"),
   selectAllButton: document.getElementById("select-all-button"),
   clearButton: document.getElementById("clear-button"),
+  exportButton: document.getElementById("export-button"),
   legendWatched: document.getElementById("legend-watched"),
   legendNotWatched: document.getElementById("legend-not-watched"),
   footerLead: document.getElementById("footer-lead"),
@@ -420,6 +441,12 @@ function init() {
 }
 
 function bindEvents() {
+  elements.rangeFilter.addEventListener("change", (event) => {
+    state.range = event.target.value;
+    persist();
+    render();
+  });
+
   elements.langButtons.forEach((button) => {
     button.addEventListener("click", () => {
       state.language = button.dataset.lang;
@@ -428,17 +455,12 @@ function bindEvents() {
     });
   });
 
-  elements.selectAllButton.addEventListener("click", () => {
-    allAnime.forEach((anime) => state.selected.add(anime.id));
-    persist();
-    render();
-  });
+  elements.selectAllButton.addEventListener("click", selectVisibleAnime);
+  elements.clearButton.addEventListener("click", clearVisibleAnime);
+  elements.headerSelectAllButton.addEventListener("click", selectVisibleAnime);
+  elements.headerClearButton.addEventListener("click", clearVisibleAnime);
 
-  elements.clearButton.addEventListener("click", () => {
-    allAnime.forEach((anime) => state.selected.delete(anime.id));
-    persist();
-    render();
-  });
+  elements.exportButton.addEventListener("click", exportBoardAsPng);
 }
 
 function render() {
@@ -456,15 +478,21 @@ function renderMeta() {
   setText(elements.heroNote, t.heroNote);
   setText(elements.pageTitle, t.pageTitle);
   setText(elements.pageSubtitle, t.subtitle);
+  setText(elements.rangeFilterLabel, t.rangeFilter);
   setText(elements.languageLabel, t.language);
   setText(elements.boardTitle, t.boardTitle);
-  setText(elements.boardDescription, t.boardDescription);
+  setText(elements.headerSelectAllButton, t.selectAll);
+  setText(elements.headerClearButton, t.clear);
   setText(elements.selectAllButton, t.selectAll);
   setText(elements.clearButton, t.clear);
+  setText(elements.exportButton, t.export);
   setText(elements.legendWatched, t.watched);
   setText(elements.legendNotWatched, t.notWatched);
   setText(elements.footerLead, t.footerLead);
   setText(elements.footerCopy, t.footer);
+
+  elements.rangeFilter.value = state.range;
+  syncRangeOptions(t);
 
   elements.langButtons.forEach((button) => {
     const isActive = button.dataset.lang === state.language;
@@ -472,17 +500,17 @@ function renderMeta() {
     button.textContent = t[languageButtonKey(button.dataset.lang)];
   });
 
-  const watchedCount = allAnime.filter((anime) => state.selected.has(anime.id)).length;
+  const watchedCount = visibleAnime().filter((anime) => state.selected.has(anime.id)).length;
   elements.watchCount.textContent = interpolate(t.watchedCount, {
     count: watchedCount,
-    total: allAnime.length,
+    total: visibleAnime().length,
   });
 }
 
 function renderBoard() {
   elements.board.innerHTML = "";
 
-  groups.forEach((group) => {
+  visibleGroups().forEach((group) => {
     const row = document.createElement("div");
     row.className = "board-row";
 
@@ -527,6 +555,46 @@ function renderBoard() {
   });
 }
 
+function visibleGroups() {
+  if (state.range === "10") {
+    return groups.slice(-10);
+  }
+
+  if (state.range === "5") {
+    return groups.slice(-5);
+  }
+
+  return groups;
+}
+
+function visibleAnime() {
+  return visibleGroups().flatMap((group) => group.items);
+}
+
+function syncRangeOptions(t) {
+  const labels = {
+    all: t.rangeAll,
+    10: t.range10,
+    5: t.range5,
+  };
+
+  Array.from(elements.rangeFilter.options).forEach((option) => {
+    option.textContent = labels[option.value];
+  });
+}
+
+function selectVisibleAnime() {
+  visibleAnime().forEach((anime) => state.selected.add(anime.id));
+  persist();
+  render();
+}
+
+function clearVisibleAnime() {
+  visibleAnime().forEach((anime) => state.selected.delete(anime.id));
+  persist();
+  render();
+}
+
 function languageTag(language) {
   if (language === "zh") {
     return "zh-Hant";
@@ -563,6 +631,28 @@ function setText(element, value) {
   }
 }
 
+async function exportBoardAsPng() {
+  if (typeof html2canvas !== "function") {
+    return;
+  }
+
+  const boardPanel = document.querySelector(".board-panel");
+  if (!boardPanel) {
+    return;
+  }
+
+  const canvas = await html2canvas(boardPanel, {
+    backgroundColor: "#f8f4ec",
+    scale: 2,
+    useCORS: true,
+  });
+
+  const link = document.createElement("a");
+  link.download = `${copy[state.language].exportFileName}-${state.range}.png`;
+  link.href = canvas.toDataURL("image/png");
+  link.click();
+}
+
 function loadState(key, fallback) {
   try {
     const raw = localStorage.getItem(key);
@@ -575,4 +665,5 @@ function loadState(key, fallback) {
 function persist() {
   localStorage.setItem(STORAGE_KEYS.language, JSON.stringify(state.language));
   localStorage.setItem(STORAGE_KEYS.selected, JSON.stringify(Array.from(state.selected)));
+  localStorage.setItem(STORAGE_KEYS.range, JSON.stringify(state.range));
 }
