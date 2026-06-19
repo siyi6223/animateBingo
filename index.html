@@ -9,29 +9,41 @@
   <body>
     <main class="page-shell">
       <section class="hero">
-        <h1 id="page-title">動畫世代賓果 EXTRA</h1>
-        <p id="page-subtitle" class="hero-copy">點擊選擇你看過的動畫</p>
+        <div class="hero-content">
+          <h1 id="page-title">思異的動畫世代Bingo</h1>
+          <p id="page-subtitle" class="hero-copy">
+            可以左右滑動點選，並支援三種語言切換。
+          </p>
+        </div>
+        <a
+          class="threads-link"
+          href="https://www.threads.com/@siyi6223"
+          target="_blank"
+          rel="noopener"
+          aria-label="Threads @siyi6223"
+        >
+          <span class="threads-link__logo" aria-hidden="true">@</span>
+        </a>
       </section>
 
       <section class="control-panel">
-        <div class="control-group">
-          <label for="year-range" id="year-range-label">年份範圍</label>
-          <select id="year-range"></select>
-        </div>
-
         <div class="control-group">
           <span id="language-label">語言</span>
           <div class="segmented-control">
             <button type="button" class="lang-button" data-lang="zh">中文</button>
             <button type="button" class="lang-button" data-lang="ja">日本語</button>
+            <button type="button" class="lang-button" data-lang="en">English</button>
           </div>
         </div>
       </section>
 
       <section class="board-panel">
         <div class="board-header">
-          <h2 id="board-title">動畫世代賓果 EXTRA</h2>
-          <p id="watch-count" class="watch-count">我看過 0/0 部動畫</p>
+          <div>
+            <h2 id="board-title">動畫清單</h2>
+            <p id="board-description" class="board-description">固定 19 行分組顯示</p>
+          </div>
+          <p id="watch-count" class="watch-count">已看 0/228 部</p>
         </div>
         <div class="board-scroll">
           <div id="board" class="board" aria-live="polite"></div>
@@ -46,18 +58,35 @@
       <section class="legend-panel">
         <div class="legend-item">
           <span class="legend-swatch swatch-selected"></span>
-          <span id="legend-watched">看過</span>
+          <span id="legend-watched">已看</span>
         </div>
         <div class="legend-item">
           <span class="legend-swatch swatch-default"></span>
-          <span id="legend-not-watched">沒看過</span>
+          <span id="legend-not-watched">未看</span>
         </div>
       </section>
 
       <footer class="site-footer">
-        <p id="footer-copy">
-          歷年關注度高的作品示意。
-        </p>
+        <p class="footer-lead" id="footer-lead">如果不小心通宵追番，這裡可以幫你看幾點能看到日出</p>
+        <div class="footer-widget-wrap">
+          <aside class="sun-widget-card" aria-label="Sunrise and sunset widget">
+            <iframe
+              src="https://sunrise.linlinblog.com/widget/sunrise?city=taipei&theme=dark&lang=zh_TW"
+              width="340"
+              height="240"
+              title="Sunrise & Sunset Widget"
+            ></iframe>
+            <div class="sun-widget-credit">
+              <a
+                href="https://sunrise.linlinblog.com/sunrise-sunset/taipei"
+                target="_blank"
+                rel="noopener"
+              >
+                台北・日出日落工具
+              </a>
+            </div>
+          </aside>
+        </div>
       </footer>
     </main>
 
