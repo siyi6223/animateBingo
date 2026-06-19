@@ -7,6 +7,8 @@
   --accent: #8c5d1d;
   --accent-soft: #f1dfbf;
   --selected: #d7852f;
+  --partial: #3e81c6;
+  --planned: #4f9b4a;
   --card-bg: #fffdf8;
   --card-hover: #f4efe5;
   --empty: #ebe7df;
@@ -257,6 +259,76 @@ select {
   background: #3e81c6;
 }
 
+.status-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.status-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 46px;
+  padding: 0 16px;
+  border: 1px solid rgba(31, 26, 20, 0.14);
+  border-radius: 999px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.72);
+  cursor: pointer;
+  transition:
+    transform 0.18s ease,
+    background-color 0.18s ease,
+    color 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.status-button:hover {
+  transform: translateY(-1px);
+  background: #fff;
+}
+
+.status-button.is-active {
+  color: var(--ink);
+  border-color: rgba(31, 26, 20, 0.22);
+  box-shadow: 0 8px 18px rgba(60, 43, 22, 0.08);
+}
+
+.status-button__swatch {
+  width: 16px;
+  height: 16px;
+  border: 1px solid rgba(31, 26, 20, 0.14);
+  border-radius: 5px;
+  flex: 0 0 auto;
+}
+
+.status-button--no-swatch {
+  justify-content: center;
+}
+
+.board-title-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  width: 100%;
+}
+
+.board-status-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.board-status-label {
+  color: var(--muted);
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
 .board-panel {
   margin-top: 18px;
   padding: 18px;
@@ -264,9 +336,9 @@ select {
 
 .board-header {
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
   gap: 16px;
-  align-items: center;
+  align-items: flex-start;
   margin-bottom: 14px;
   padding: 4px 8px 14px;
   border-bottom: 1px solid rgba(31, 26, 20, 0.1);
@@ -297,7 +369,8 @@ select {
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
-  justify-content: flex-end;
+  justify-content: space-between;
+  width: 100%;
 }
 
 .board-inline-actions {
@@ -379,6 +452,16 @@ select {
   background: var(--selected);
 }
 
+.anime-cell.is-partial {
+  color: #fff;
+  background: var(--partial);
+}
+
+.anime-cell.is-planned {
+  color: #fff;
+  background: var(--planned);
+}
+
 .anime-cell span {
   display: -webkit-box;
   overflow: hidden;
@@ -454,6 +537,16 @@ select {
   background: var(--selected);
 }
 
+.swatch-partial {
+  border-color: transparent;
+  background: var(--partial);
+}
+
+.swatch-planned {
+  border-color: transparent;
+  background: var(--planned);
+}
+
 .swatch-default {
   background: var(--card-bg);
 }
@@ -487,6 +580,19 @@ select {
   .board-header-actions {
     width: 100%;
     justify-content: space-between;
+  }
+
+  .board-title-row {
+    width: 100%;
+    align-items: flex-start;
+  }
+
+  .board-status-group {
+    width: 100%;
+  }
+
+  .status-picker {
+    width: 100%;
   }
 }
 
@@ -539,5 +645,10 @@ select {
 
   .anime-cell span {
     font-size: 0.76rem;
+  }
+
+  .status-button {
+    width: 100%;
+    justify-content: center;
   }
 }

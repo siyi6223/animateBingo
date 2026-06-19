@@ -10,9 +10,9 @@
     <main class="page-shell">
       <section class="hero">
         <div class="hero-content">
-          <h1 id="page-title">思異的動畫世代Bingo</h1>
+          <h1 id="page-title">思異的動畫世代賓果</h1>
           <p id="page-subtitle" class="hero-copy">
-            可以左右滑動點選，並支援三種語言切換。
+            橫向滑動表格並點選作品，支援三種語言切換與觀看狀態標記。
           </p>
         </div>
         <a
@@ -28,11 +28,11 @@
 
       <section class="control-panel">
         <div class="control-group">
-          <label for="range-filter" id="range-filter-label">表格長度</label>
+          <label for="range-filter" id="range-filter-label">表格範圍</label>
           <select id="range-filter">
             <option value="all">全部</option>
-            <option value="10">近10年</option>
-            <option value="5">近5年</option>
+            <option value="10">最近 10 組</option>
+            <option value="5">最近 5 組</option>
           </select>
         </div>
 
@@ -48,14 +48,34 @@
 
       <section class="board-panel">
         <div class="board-header">
-          <div>
+          <div class="board-title-row">
             <h2 id="board-title">思異的動畫世代賓果</h2>
+            <div class="board-status-group">
+              <span id="status-picker-label" class="board-status-label">觀看狀態</span>
+              <div class="status-picker" role="group" aria-labelledby="status-picker-label">
+                <button type="button" class="status-button" data-status="watched">
+                  <span class="status-button__swatch swatch-selected"></span>
+                  <span id="status-watched-label">已看</span>
+                </button>
+                <button type="button" class="status-button" data-status="partial">
+                  <span class="status-button__swatch swatch-partial"></span>
+                  <span id="status-partial-label">沒完整看完</span>
+                </button>
+                <button type="button" class="status-button" data-status="planned">
+                  <span class="status-button__swatch swatch-planned"></span>
+                  <span id="status-planned-label">我會去看</span>
+                </button>
+                <button type="button" class="status-button status-button--no-swatch" data-status="none">
+                  <span id="status-none-label">未看</span>
+                </button>
+              </div>
+            </div>
           </div>
           <div class="board-header-actions">
-            <p id="watch-count" class="watch-count">已看 0/228 部</p>
+            <p id="watch-count" class="watch-count">已看 0，沒完整看完 0，我會去看 0，共 228</p>
             <div class="board-inline-actions">
-              <button type="button" id="header-select-all-button" class="action-button primary action-button--compact">全選</button>
-              <button type="button" id="header-clear-button" class="action-button action-button--compact">清除</button>
+              <button type="button" id="header-select-all-button" class="action-button primary action-button--compact">全部標成已看</button>
+              <button type="button" id="header-clear-button" class="action-button action-button--compact">清除標記</button>
             </div>
           </div>
         </div>
@@ -65,24 +85,13 @@
       </section>
 
       <section class="action-bar">
-        <button type="button" id="select-all-button" class="action-button primary">全選</button>
-        <button type="button" id="clear-button" class="action-button">清除</button>
+        <button type="button" id="select-all-button" class="action-button primary">全部標成已看</button>
+        <button type="button" id="clear-button" class="action-button">清除標記</button>
         <button type="button" id="export-button" class="action-button">匯出 PNG</button>
       </section>
 
-      <section class="legend-panel">
-        <div class="legend-item">
-          <span class="legend-swatch swatch-selected"></span>
-          <span id="legend-watched">已看</span>
-        </div>
-        <div class="legend-item">
-          <span class="legend-swatch swatch-default"></span>
-          <span id="legend-not-watched">未看</span>
-        </div>
-      </section>
-
       <footer class="site-footer">
-        <p class="footer-lead" id="footer-lead">如果不小心通宵追番，這裡可以幫你看幾點能看到日出</p>
+        <p class="footer-lead" id="footer-lead">如果你一口氣追番到天亮，這裡也順便告訴你太陽什麼時候升起。</p>
         <div class="footer-widget-wrap">
           <aside class="sun-widget-card" aria-label="Sunrise and sunset widget">
             <iframe
@@ -97,7 +106,7 @@
                 target="_blank"
                 rel="noopener"
               >
-                台北・日出日落工具
+                查看台北日出日落資訊
               </a>
             </div>
           </aside>

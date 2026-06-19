@@ -1,7 +1,16 @@
 const STORAGE_KEYS = {
   language: "anime-sedai-static-language",
   selected: "anime-sedai-static-selected",
+  statuses: "anime-sedai-static-statuses",
+  activeStatus: "anime-sedai-static-active-status",
   range: "anime-sedai-static-range",
+};
+
+const STATUS = {
+  none: "none",
+  watched: "watched",
+  partial: "partial",
+  planned: "planned",
 };
 
 const copy = {
@@ -404,7 +413,8 @@ const groups = [
 
 const state = {
   language: loadState(STORAGE_KEYS.language, "zh"),
-  selected: new Set(loadState(STORAGE_KEYS.selected, [])),
+  statuses: loadStatuses(),
+  activeStatus: loadState(STORAGE_KEYS.activeStatus, STATUS.watched),
   range: loadState(STORAGE_KEYS.range, "all"),
 };
 
@@ -424,11 +434,15 @@ const elements = {
   selectAllButton: document.getElementById("select-all-button"),
   clearButton: document.getElementById("clear-button"),
   exportButton: document.getElementById("export-button"),
-  legendWatched: document.getElementById("legend-watched"),
-  legendNotWatched: document.getElementById("legend-not-watched"),
+  statusPickerLabel: document.getElementById("status-picker-label"),
+  statusWatchedLabel: document.getElementById("status-watched-label"),
+  statusPartialLabel: document.getElementById("status-partial-label"),
+  statusPlannedLabel: document.getElementById("status-planned-label"),
+  statusNoneLabel: document.getElementById("status-none-label"),
   footerLead: document.getElementById("footer-lead"),
   footerCopy: document.getElementById("footer-copy"),
   langButtons: Array.from(document.querySelectorAll(".lang-button")),
+  statusButtons: Array.from(document.querySelectorAll(".status-button")),
 };
 
 init();
@@ -448,6 +462,14 @@ function bindEvents() {
   elements.langButtons.forEach((button) => {
     button.addEventListener("click", () => {
       state.language = button.dataset.lang;
+      persist();
+      render();
+    });
+  });
+
+  elements.statusButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      state.activeStatus = button.dataset.status;
       persist();
       render();
     });
@@ -478,14 +500,17 @@ function renderMeta() {
   setText(elements.pageSubtitle, t.subtitle);
   setText(elements.rangeFilterLabel, t.rangeFilter);
   setText(elements.languageLabel, t.language);
+  setText(elements.statusPickerLabel, t.statusPicker || defaultStatusPickerLabel(state.language));
   setText(elements.boardTitle, t.boardTitle);
   setText(elements.headerSelectAllButton, t.selectAll);
   setText(elements.headerClearButton, t.clear);
   setText(elements.selectAllButton, t.selectAll);
   setText(elements.clearButton, t.clear);
   setText(elements.exportButton, t.export);
-  setText(elements.legendWatched, t.watched);
-  setText(elements.legendNotWatched, t.notWatched);
+  setText(elements.statusWatchedLabel, t.watched);
+  setText(elements.statusPartialLabel, t.partial || defaultPartialLabel(state.language));
+  setText(elements.statusPlannedLabel, t.planned || defaultPlannedLabel(state.language));
+  setText(elements.statusNoneLabel, t.notWatched);
   setText(elements.footerLead, t.footerLead);
   setText(elements.footerCopy, t.footer);
 
@@ -498,11 +523,13 @@ function renderMeta() {
     button.textContent = t[languageButtonKey(button.dataset.lang)];
   });
 
-  const watchedCount = visibleAnime().filter((anime) => state.selected.has(anime.id)).length;
-  elements.watchCount.textContent = interpolate(t.watchedCount, {
-    count: watchedCount,
-    total: visibleAnime().length,
+  elements.statusButtons.forEach((button) => {
+    const isActive = button.dataset.status === state.activeStatus;
+    button.classList.toggle("is-active", isActive);
+    button.setAttribute("aria-pressed", String(isActive));
   });
+
+  elements.watchCount.textContent = formatStatusSummary(countVisibleStatuses(), visibleAnime().length);
 }
 
 function renderBoard() {
@@ -534,25 +561,28 @@ function populateBoard(target, { interactive }) {
 }
 
 function createAnimeCell(anime, interactive) {
-  const isSelected = state.selected.has(anime.id);
+  const status = getAnimeStatus(anime.id);
   const cell = document.createElement(interactive ? "button" : "div");
   cell.className = "anime-cell";
   cell.title = anime[state.language];
 
-  if (isSelected) {
+  if (status === STATUS.watched) {
     cell.classList.add("is-selected");
+  }
+
+  if (status === STATUS.partial) {
+    cell.classList.add("is-partial");
+  }
+
+  if (status === STATUS.planned) {
+    cell.classList.add("is-planned");
   }
 
   if (interactive) {
     cell.type = "button";
-    cell.setAttribute("aria-pressed", String(isSelected));
+    cell.setAttribute("aria-pressed", String(status !== STATUS.none));
     cell.addEventListener("click", () => {
-      if (state.selected.has(anime.id)) {
-        state.selected.delete(anime.id);
-      } else {
-        state.selected.add(anime.id);
-      }
-
+      setAnimeStatus(anime.id, status === state.activeStatus ? STATUS.none : state.activeStatus);
       persist();
       render();
     });
@@ -593,15 +623,174 @@ function syncRangeOptions(t) {
 }
 
 function selectVisibleAnime() {
-  visibleAnime().forEach((anime) => state.selected.add(anime.id));
+  visibleAnime().forEach((anime) => setAnimeStatus(anime.id, STATUS.watched));
   persist();
   render();
 }
 
 function clearVisibleAnime() {
-  visibleAnime().forEach((anime) => state.selected.delete(anime.id));
+  visibleAnime().forEach((anime) => setAnimeStatus(anime.id, STATUS.none));
   persist();
   render();
+}
+
+function loadStatuses() {
+  const savedStatuses = loadState(STORAGE_KEYS.statuses, null);
+  if (savedStatuses && typeof savedStatuses === "object" && !Array.isArray(savedStatuses)) {
+    return savedStatuses;
+  }
+
+  const legacySelected = loadState(STORAGE_KEYS.selected, []);
+  return legacySelected.reduce((result, id) => {
+    result[id] = STATUS.watched;
+    return result;
+  }, {});
+}
+
+function getAnimeStatus(animeId) {
+  return state.statuses[animeId] || STATUS.none;
+}
+
+function setAnimeStatus(animeId, status) {
+  if (status === STATUS.none) {
+    delete state.statuses[animeId];
+    return;
+  }
+
+  state.statuses[animeId] = status;
+}
+
+function countVisibleStatuses() {
+  return visibleAnime().reduce(
+    (result, anime) => {
+      const status = getAnimeStatus(anime.id);
+      if (status === STATUS.watched) {
+        result.watched += 1;
+      }
+
+      if (status === STATUS.partial) {
+        result.partial += 1;
+      }
+
+      if (status === STATUS.planned) {
+        result.planned += 1;
+      }
+
+      return result;
+    },
+    { watched: 0, partial: 0, planned: 0 },
+  );
+}
+
+function defaultStatusPickerLabel(language) {
+  if (language === "ja") {
+    return "視聴状態";
+  }
+
+  if (language === "en") {
+    return "Watch status";
+  }
+
+  return "觀看狀態";
+}
+
+function defaultPartialLabel(language) {
+  if (language === "ja") {
+    return "途中まで";
+  }
+
+  if (language === "en") {
+    return "Not finished";
+  }
+
+  return "沒完整看完";
+}
+
+function defaultPlannedLabel(language) {
+  if (language === "ja") {
+    return "これから見る";
+  }
+
+  if (language === "en") {
+    return "Plan to watch";
+  }
+
+  return "我會去看";
+}
+
+function defaultStatusSummary(language) {
+  if (language === "ja") {
+    return "視聴済み {{watched}}、未完走 {{partial}}、これから見る {{planned}}、合計 {{total}}";
+  }
+
+  if (language === "en") {
+    return "Watched {{watched}}, not finished {{partial}}, plan to watch {{planned}}, total {{total}}";
+  }
+
+  return "已看 {{watched}}，沒完整看完 {{partial}}，我會去看 {{planned}}，共 {{total}}";
+}
+
+function formatStatusSummary(counts, total) {
+  const t = copy[state.language];
+  const parts = [
+    {
+      count: counts.watched,
+      label: t.watched,
+    },
+    {
+      count: counts.partial,
+      label: t.partial || defaultPartialLabel(state.language),
+    },
+    {
+      count: counts.planned,
+      label: t.planned || defaultPlannedLabel(state.language),
+    },
+  ]
+    .filter((item) => item.count > 0)
+    .map((item) => `${item.label} ${item.count}`);
+
+  const totalText = totalLabel(state.language, total);
+  if (!parts.length) {
+    return totalText;
+  }
+
+  return `${parts.join(statusSummarySeparator(state.language))}${statusSummarySeparator(state.language)}${totalText}`;
+}
+
+function statusSummarySeparator(language) {
+  if (language === "en") {
+    return ", ";
+  }
+
+  return "，";
+}
+
+function totalLabel(language, total) {
+  if (language === "ja") {
+    return `合計 ${total}`;
+  }
+
+  if (language === "en") {
+    return `total ${total}`;
+  }
+
+  return `共 ${total}`;
+}
+
+function exportStatusFill(status) {
+  if (status === STATUS.watched) {
+    return "#d7852f";
+  }
+
+  if (status === STATUS.partial) {
+    return "#3e81c6";
+  }
+
+  if (status === STATUS.planned) {
+    return "#4f9b4a";
+  }
+
+  return "#fffdf8";
 }
 
 function languageTag(language) {
@@ -676,18 +865,16 @@ function renderBoardExportCanvas() {
 
   const headerY = panelPadding + 4;
   const headerBottom = panelPadding + headerHeight - 14;
-  const watchedCount = visibleAnime().filter((anime) => state.selected.has(anime.id)).length;
-  const watchedText = interpolate(t.watchedCount, {
-    count: watchedCount,
-    total: visibleAnime().length,
-  });
+  const watchedText = formatStatusSummary(countVisibleStatuses(), visibleAnime().length);
 
   ctx.fillStyle = "#1f1a14";
   ctx.font = exportFont(20, 700);
   ctx.textBaseline = "top";
   ctx.fillText(t.boardTitle, panelPadding + headerInset, headerY);
+  const titleWidth = Math.ceil(ctx.measureText(t.boardTitle).width);
 
   drawExportHeaderActions(ctx, watchedText, panelWidth - panelPadding - headerInset, headerY - 2);
+  drawExportStatusPicker(ctx, panelPadding + headerInset + titleWidth + 22, headerY - 2);
 
   ctx.strokeStyle = "rgba(31, 26, 20, 0.1)";
   ctx.lineWidth = 1;
@@ -731,6 +918,69 @@ function drawExportHeaderActions(ctx, watchedText, right, y) {
   fillCenteredText(ctx, copy[state.language].clear, clearX, y, clearWidth, buttonHeight);
 }
 
+function drawExportStatusPicker(ctx, x, y) {
+  const items = [
+    {
+      status: STATUS.watched,
+      label: copy[state.language].watched,
+      color: "#d7852f",
+    },
+    {
+      status: STATUS.partial,
+      label: copy[state.language].partial || defaultPartialLabel(state.language),
+      color: "#3e81c6",
+    },
+    {
+      status: STATUS.planned,
+      label: copy[state.language].planned || defaultPlannedLabel(state.language),
+      color: "#4f9b4a",
+    },
+    {
+      status: STATUS.none,
+      label: copy[state.language].notWatched,
+      hasSwatch: false,
+    },
+  ];
+
+  ctx.font = exportFont(14, 600);
+  ctx.textBaseline = "middle";
+
+  let offsetX = x;
+  items.forEach((item) => {
+    const labelWidth = Math.ceil(ctx.measureText(item.label).width);
+    const width = labelWidth + (item.hasSwatch === false ? 28 : 40);
+    const isActive = state.activeStatus === item.status;
+
+    drawRoundedRect(
+      ctx,
+      offsetX,
+      y,
+      width,
+      38,
+      19,
+      isActive ? "#ffffff" : "#f7f2ea",
+      isActive ? "rgba(31, 26, 20, 0.22)" : "rgba(31, 26, 20, 0.1)",
+    );
+
+    if (item.hasSwatch !== false) {
+      drawRoundedRect(
+        ctx,
+        offsetX + 12,
+        y + 12,
+        14,
+        14,
+        4,
+        item.color,
+        item.borderColor || item.color,
+      );
+    }
+
+    ctx.fillStyle = "#1f1a14";
+    ctx.fillText(item.label, offsetX + (item.hasSwatch === false ? 14 : 32), y + 19);
+    offsetX += width + 8;
+  });
+}
+
 function drawExportBoard(ctx, x, y, { cellSize, columns, yearWidth }) {
   const borderColor = "rgba(31, 26, 20, 0.12)";
   const groupsToDraw = visibleGroups();
@@ -751,11 +1001,13 @@ function drawExportBoard(ctx, x, y, { cellSize, columns, yearWidth }) {
 
     group.items.forEach((anime, columnIndex) => {
       const cellX = x + yearWidth + columnIndex * cellSize;
-      const isSelected = state.selected.has(anime.id);
+      const status = getAnimeStatus(anime.id);
+      const fillStyle = exportStatusFill(status);
+      const textStyle = status === STATUS.none ? "#1f1a14" : "#ffffff";
 
-      ctx.fillStyle = isSelected ? "#d7852f" : "#fffdf8";
+      ctx.fillStyle = fillStyle;
       ctx.fillRect(cellX, rowY, cellSize, cellSize);
-      ctx.fillStyle = isSelected ? "#ffffff" : "#1f1a14";
+      ctx.fillStyle = textStyle;
       ctx.font = exportFont(13, 400);
       fillWrappedText(ctx, anime[state.language], cellX + 10, rowY + 10, cellSize - 20, cellSize - 20, 3, 15.6);
     });
@@ -867,6 +1119,15 @@ function loadState(key, fallback) {
 
 function persist() {
   localStorage.setItem(STORAGE_KEYS.language, JSON.stringify(state.language));
-  localStorage.setItem(STORAGE_KEYS.selected, JSON.stringify(Array.from(state.selected)));
+  localStorage.setItem(
+    STORAGE_KEYS.selected,
+    JSON.stringify(
+      Object.entries(state.statuses)
+        .filter(([, status]) => status === STATUS.watched)
+        .map(([animeId]) => animeId),
+    ),
+  );
+  localStorage.setItem(STORAGE_KEYS.statuses, JSON.stringify(state.statuses));
+  localStorage.setItem(STORAGE_KEYS.activeStatus, JSON.stringify(state.activeStatus));
   localStorage.setItem(STORAGE_KEYS.range, JSON.stringify(state.range));
 }
